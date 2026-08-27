@@ -1,0 +1,12 @@
+{
+  "slug": "explain-then-check",
+  "title": "Explain Then Check",
+  "territory": "utilities",
+  "user": "Technical self-learners who can recognize flashcards but need short, deliberate practice explaining a concept, mechanism, and trade-off in their own words.",
+  "smallest_useful_product": "A local prompt runner: choose a concept, record or type an explanation under headings (what, why, failure case), mark missing pieces, and schedule only those missing pieces for another attempt.",
+  "success_measure": "At least half of weekly active users retry five or more marked omissions within seven days, and 70% mark a retry clearer than its first attempt.",
+  "artifact_class": "pwa-offline",
+  "monetization": "free",
+  "constraints": "Audio remains on device by default; no automated claim that an explanation is correct; support export/delete.",
+  "state": "RESEARCHED"
+}
