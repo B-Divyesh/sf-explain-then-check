@@ -26,5 +26,6 @@ describe('practice utilities', () => {
     expect(exportCsv(bundle)).toContain('"Eviction"');
     expect(validImport(bundle)).toBe(true);
     expect(validImport({ product: 'something-else' })).toBe(false);
+    expect(validImport({ ...bundle, omissions: [{ text: '<script>' }] })).toBe(false);
   });
 });

@@ -3,10 +3,28 @@
   "title": "Explain Then Check",
   "territory": "utilities",
   "user": "Technical self-learners who can recognize flashcards but need short, deliberate practice explaining a concept, mechanism, and trade-off in their own words.",
+  "evidence": [
+    {
+      "url": "https://hn.algolia.com/api/v1/items/44528594",
+      "date": "2025-07-11",
+      "quote_or_summary": "A learner of system design and distributed systems asks whether spaced repetition helps with deep understanding; respondents emphasize building and practicing concepts."
+    },
+    {
+      "url": "https://forums.ankiweb.net/t/language-learners-what-do-you-do-to-make-sure-you-are-learning-cards-rather-than-brute-force-repeating-them/70097",
+      "date": "2026-06-13",
+      "quote_or_summary": "A learner describes repeatedly pressing Again without learning the crucial distinction and asks how to avoid brute-force repetition."
+    }
+  ],
+  "recurrence": "Independent learners in technical and language domains report the same recognition-versus-understanding gap; the severity is wasted review time and false confidence.",
+  "current_workaround": "Write free-form notes, explain aloud with no record, make more cards, or rely on a chatbot to ask improvised questions.",
+  "incumbents_and_gap": "Anki optimizes recall intervals; RemNote and chat tutors collect notes or converse. None makes a 90-second structured explanation with self-selected omissions and later retry the smallest unit.",
   "smallest_useful_product": "A local prompt runner: choose a concept, record or type an explanation under headings (what, why, failure case), mark missing pieces, and schedule only those missing pieces for another attempt.",
   "success_measure": "At least half of weekly active users retry five or more marked omissions within seven days, and 70% mark a retry clearer than its first attempt.",
   "artifact_class": "pwa-offline",
   "monetization": "free",
   "constraints": "Audio remains on device by default; no automated claim that an explanation is correct; support export/delete.",
+  "est_build_effort": "S",
+  "why_distinct": "It trains generative explanation without pretending an LLM can certify understanding.",
+  "confidence": 4,
   "state": "RESEARCHED"
 }

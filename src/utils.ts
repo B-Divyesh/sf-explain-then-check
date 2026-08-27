@@ -66,6 +66,15 @@ export function exportCsv(bundle: ExportBundle): string {
 export function validImport(value: unknown): value is ExportBundle {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<ExportBundle>;
-  return item.product === 'explain-then-check' && item.version === 1 &&
-    Array.isArray(item.concepts) && Array.isArray(item.attempts) && Array.isArray(item.omissions);
+  const isText = (candidate: unknown): candidate is string => typeof candidate === 'string';
+  const conceptsValid = Array.isArray(item.concepts) && item.concepts.every((concept) =>
+    concept && isText(concept.id) && isText(concept.title) && isText(concept.createdAt) && isText(concept.updatedAt));
+  const attemptsValid = Array.isArray(item.attempts) && item.attempts.every((attempt) =>
+    attempt && isText(attempt.id) && isText(attempt.conceptId) && isText(attempt.createdAt) &&
+    ['full', 'retry'].includes(attempt.kind) && isText(attempt.what) && isText(attempt.why) && isText(attempt.failure));
+  const omissionsValid = Array.isArray(item.omissions) && item.omissions.every((omission) =>
+    omission && isText(omission.id) && isText(omission.conceptId) && isText(omission.sourceAttemptId) &&
+    isText(omission.text) && ['what', 'why', 'failure'].includes(omission.part) && isText(omission.createdAt) &&
+    isText(omission.dueAt) && ['pending', 'clearer'].includes(omission.status) && typeof omission.retryCount === 'number');
+  return item.product === 'explain-then-check' && item.version === 1 && conceptsValid && attemptsValid && omissionsValid;
 }
