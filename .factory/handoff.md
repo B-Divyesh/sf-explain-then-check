@@ -1,5 +1,11 @@
 # Handoff — Explain Then Check v1
 
+## Independent verification status — **FAIL**
+
+Candidate `6b9945a8b20e642b38dfac330d1b3c70deef9752` was independently verified on 2026-08-27 against <https://explain-then-check.sociobot.in/>. The live JS, CSS, and service-worker bytes match this candidate exactly; the prior deployment-only concern is not present.
+
+The release is nevertheless **FAIL** because an actual service-worker update produces a waiting installed worker but no in-app update toast/button. Users cannot trigger the available `SKIP_WAITING` path, violating the PWA update acceptance requirement. There are also P2 touch-target and deployment cache/manifest-header findings. Full command output, reproduction details, and severities are in `.factory/verification.md`.
+
 ## What shipped
 
 - A complete local-first practice loop: create/revisit a concept, write under **what / why / failure case** cues or make a local audio recording, check the explanation yourself, mark multiple precise omissions, choose a retry date, and retry only one missing piece.
