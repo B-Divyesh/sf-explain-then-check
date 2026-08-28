@@ -1,16 +1,78 @@
-# Handoff — Explain Then Check independent verification 2
+# Handoff — Explain Then Check repair 2
 
-## Release status — FAIL
+## Release status — REPAIRED, DEPLOYED, AND LIVE-VERIFIED
 
-Candidate `8a0777b611596c1f1fc299003a06ed907596d167` was independently verified on 2026-08-28 UTC against <https://explain-then-check.sociobot.in/>. The live JS, CSS, and service-worker bytes match the candidate and the product loop, offline reload, actionable service-worker update, accessibility, privacy behavior, tests, type check, production build, audit, and Lighthouse checks pass.
+This repair resolves every open finding in independent verifier report `ec062a3d627044ccd56f94d37b5094456e3a9081` for candidate `8a0777b611596c1f1fc299003a06ed907596d167`. Repair commit: `0ce4319d5f7d592b631f77271d523fb9d69a4a69` (`fix: ship Azure static response policy`). It was pushed to `origin/main` and deployed through the factory static deployment work order to <https://explain-then-check.sociobot.in> on 2026-08-28 UTC.
 
-Acceptance fails because the live static host ignores the shipped `dist/_headers` policy: all tested paths use `Cache-Control: public, must-revalidate, max-age=30`; `sw.js` is not no-store, hashed assets are not immutable, the manifest is `application/octet-stream`, and CSP / Permissions-Policy / frame protection are absent. See `.factory/verification-2.md` for exact hashes, commands, and reproduction evidence.
+## Root cause and repair
 
-Required follow-up: configure the real deployment platform to serve the policy in `dist/_headers` (or its equivalent), redeploy, and rerun live header verification. No product-code changes are recommended for the former service-worker update defect; that behavior passed independently.
+The candidate included `public/_headers`, but the work-order deployment is **Azure Static Web Apps**, which ignores that Cloudflare/Netlify-style file. Without a host-native configuration, the deploy script generated a minimal fallback and Azure served every route with a 30-second cache policy, an octet-stream manifest, and no configured hardening headers.
+
+Added `public/staticwebapp.config.json`, which Vite copies to `dist/staticwebapp.config.json` at the Azure-required artifact root. It retains the existing portable `_headers` policy for compatible hosts and adds the Azure-native equivalent:
+
+- Immutable one-year cache policy for `/assets/*`, `/art/*`, and `/icons/*`.
+- `no-cache, no-store, must-revalidate` for `/sw.js`; no-cache document routes.
+- `application/manifest+json; charset=utf-8` mapping for `.webmanifest`.
+- CSP, `Permissions-Policy`, `X-Frame-Options: DENY`, `nosniff`, and strict referrer policy on all static responses.
+- Navigation-fallback exclusions for PWA assets, service worker, manifest, and offline/legal static files.
+
+No practice-loop, data model, privacy behavior, or visual-system behavior changed.
+
+## Regression coverage
+
+`tests/e2e/app.spec.ts` now parses `dist/staticwebapp.config.json` and asserts the Azure fallback/exclusions, security headers, manifest MIME mapping, immutable assets, service-worker no-store policy, manifest revalidation policy, and document no-cache route. This catches the prior root cause—shipping only `_headers`—before deployment.
+
+Existing end-to-end coverage remains for explain → omission → retry → clearer, keyboard/draft/export, 390px offline reload, real waiting-service-worker update activation, Axe serious/critical scan, 44px desktop target sizes, direct legal routes, and portable `_headers` policy.
+
+## Verification evidence
+
+Executed from a clean dependency install on 2026-08-28 UTC:
+
+```sh
+npm ci
+npm test
+npm run build
+npm audit --audit-level=high
+```
+
+- `npm ci`: installed 72 packages; audit reported 0 vulnerabilities.
+- `npm test`: passed — 3 Vitest tests and 8 Chromium Playwright tests; the production artifact is rebuilt before browser tests.
+- `npm run build`: passed `tsc --noEmit`, Vite production build, and service-worker generation. No separate lint script exists. `dist/index.html` is present.
+- Production budgets: initial JS 32.13 KB (11.05 KB gzip), CSS 18.30 KB (5.15 KB gzip), hero WebP 52.3 KB.
+- `npm audit --audit-level=high`: 0 vulnerabilities.
+- Azure Static Web Apps CLI consumed the built `dist/` configuration locally and returned the exact immutable, no-store, MIME, document-cache, and security policies.
+- Live Chromium desktop pass (1440×1000): title, `lang=en`, one `main`, one `h1`, privacy/terms routes, skip-link keyboard focus (`rgb(138, 115, 222) solid 3px`), reduced-motion transition (`1e-05s`), zero serious/critical Axe violations, zero console/page errors, and requests only to `https://explain-then-check.sociobot.in`.
+- Live 390×844 PWA pass: zero horizontal overflow; after service-worker control, offline reload displayed the app h1 and `Offline · saved locally`.
+- Lighthouse 13 live mobile: Performance 100, Accessibility 100, Best Practices 100, SEO 100; LCP 1,009 ms, CLS 0, TBT 70 ms.
+
+### Live response-policy and identity checks
+
+The factory deployment created/used Azure Static Web App `sf-explain-then-check` (`orange-river-093e3d30f.7.azurestaticapps.net`) and the custom hostname above. Live `curl -I` checks now show:
+
+| Path | Verified live policy |
+| --- | --- |
+| `/` and legal routes | `Cache-Control: no-cache, must-revalidate` plus CSP, Permissions-Policy, and `X-Frame-Options: DENY` |
+| `/assets/main-BBpWre9R.js` and CSS | `Cache-Control: public, max-age=31536000, immutable` |
+| `/sw.js` | `Cache-Control: no-cache, no-store, must-revalidate` |
+| `/manifest.webmanifest` | `Content-Type: application/manifest+json; charset=utf-8`; `Cache-Control: public, max-age=86400, must-revalidate` |
+
+Live SHA-256 identity matched the built artifact:
+
+| File | SHA-256 |
+| --- | --- |
+| `assets/main-BBpWre9R.js` | `70adb37d648b0bc649b53614c78298b4e0d8e8063511dc0098d4cb82e4dcaf1f` |
+| `assets/main-Bbv9DN4z.css` | `fbc814a24598b992d08e4b64804d6bfbd9444c62b5139f870a492b30018ee47a` |
+| `sw.js` | `2ef3f03a96cd66c7a86bad6b0a38a63dbb5ce3860e85aa45aad945bebf9eec8f` |
+
+## Known product limits
+
+- Audio remains device-only and intentionally stays out of JSON/CSV exports.
+- The app has no OS-level reminders; due pieces appear when the learner opens it.
+- Browser storage can be evicted or cleared, so important text records should be exported periodically.
 
 ---
 
-# Prior builder handoff — Explain Then Check repair 1
+# Prior builder handoff — Explain Then Check repair 1 (historical)
 
 ## Release status — REPAIR VERIFIED LOCALLY; PUSHED, LIVE PUBLISH PENDING
 
