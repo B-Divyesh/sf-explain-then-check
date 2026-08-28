@@ -160,6 +160,32 @@ test('ships static-host cache, manifest, and hardening policies', async () => {
   expect(headers).toContain('X-Frame-Options: DENY');
 });
 
+test('ships the Azure Static Web Apps response-policy configuration in the deployment artifact', async () => {
+  const configuration = JSON.parse(await readFile(resolve(process.cwd(), 'dist/staticwebapp.config.json'), 'utf8')) as {
+    globalHeaders: Record<string, string>;
+    mimeTypes: Record<string, string>;
+    navigationFallback: { rewrite: string; exclude: string[] };
+    routes: Array<{ route: string; headers: Record<string, string> }>;
+  };
+  const headersFor = (route: string) => configuration.routes.find((rule) => rule.route === route)?.headers;
+
+  expect(configuration.navigationFallback).toEqual(expect.objectContaining({
+    rewrite: '/index.html',
+    exclude: expect.arrayContaining(['/assets/*', '/sw.js', '/manifest.webmanifest'])
+  }));
+  expect(configuration.globalHeaders).toMatchObject({
+    'Content-Security-Policy': expect.stringContaining("default-src 'self'"),
+    'Permissions-Policy': 'camera=(), geolocation=(), microphone=(self), payment=(), usb=()',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY'
+  });
+  expect(configuration.mimeTypes['.webmanifest']).toBe('application/manifest+json; charset=utf-8');
+  expect(headersFor('/assets/*')?.['Cache-Control']).toBe('public, max-age=31536000, immutable');
+  expect(headersFor('/sw.js')?.['Cache-Control']).toBe('no-cache, no-store, must-revalidate');
+  expect(headersFor('/manifest.webmanifest')?.['Cache-Control']).toBe('public, max-age=86400, must-revalidate');
+  expect(headersFor('/*')?.['Cache-Control']).toBe('no-cache, must-revalidate');
+});
+
 test('serves privacy and terms at their direct paths', async ({ page }) => {
   await page.goto('/privacy/');
   await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();

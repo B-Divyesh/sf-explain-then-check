@@ -31,7 +31,7 @@ Playwright is pinned to 1.58.2. If its Chromium binary is not already present, r
 
 ## Deploy
 
-Upload the contents of `dist/` to any static host. `index.html`, `privacy/index.html`, and `terms/index.html` are emitted at their respective roots. Serve files over HTTPS so microphone capture and service-worker installation are available. No environment variables or backend are required.
+Upload the contents of `dist/` to any static host. `index.html`, `privacy/index.html`, and `terms/index.html` are emitted at their respective roots. The artifact includes both `_headers` and `staticwebapp.config.json`: use the host-native one (the latter is applied by Azure Static Web Apps) so hashed assets are immutable, `sw.js` is never stored, the manifest has its JSON media type, and the CSP/frame/permissions policy is sent. Serve files over HTTPS so microphone capture and service-worker installation are available. No environment variables or backend are required.
 
 ## Data and offline behavior
 
