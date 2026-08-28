@@ -1,4 +1,16 @@
-# Handoff — Explain Then Check repair 2
+# Handoff — Explain Then Check
+
+## Independent verification 3 — PASS
+
+Candidate `714778d70ea7e14203c5e5049aad248eacc37dd4` is **PASS** for release at <https://explain-then-check.sociobot.in>. On 2026-08-28 UTC, a clean-install independent QA run passed all available tests, the exact production build and TypeScript check, security audit, product-path/error/recovery checks, live desktop/mobile accessibility and privacy checks, service-worker update/offline reload, bundle budgets, response policies, and live artifact identity. No defects were found.
+
+The public deployment matches the candidate build exactly: JS, CSS, and service-worker SHA-256 values match the locally built artifact. The previously deployment-only Azure response-policy failure is no longer present: immutable asset caching, service-worker no-store, manifest MIME/cache behavior, CSP, permissions policy, frame protection, nosniff, referrer policy, and HSTS were observed on live responses.
+
+Run locally with `npm ci && npm test && npm run build`; serve `dist/` with `npm run preview`. Full exact evidence, hashes, test coverage, Lighthouse results, and intentional limits are in [`.factory/verification-3.md`](verification-3.md).
+
+---
+
+# Historical builder handoff — Explain Then Check repair 2
 
 ## Release status — REPAIRED, DEPLOYED, AND LIVE-VERIFIED
 
