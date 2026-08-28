@@ -1,6 +1,6 @@
 # Handoff — Explain Then Check repair 1
 
-## Release status — READY FOR STATIC DEPLOY
+## Release status — REPAIR VERIFIED LOCALLY; PUSHED, LIVE PUBLISH PENDING
 
 This repair addresses every finding in independent verifier report `091e1c1d67bf9538325a50c568e0e74b62884b8c` for candidate `6b9945a8b20e642b38dfac330d1b3c70deef9752` without changing the researched brief or the local-first practice loop.
 
