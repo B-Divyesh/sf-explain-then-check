@@ -34,7 +34,9 @@ npm audit --audit-level=high
 
 ## Deploy and live checks
 
-Static deployment is triggered from `main`. The production artifact is `dist/` with `index.html` at its root and includes `dist/_headers`; deploy hosts must honor that standard static-host policy file. After the push, verify `https://explain-then-check.sociobot.in/` serves the new hashed JS/CSS and `sw.js` bytes, then confirm `/manifest.webmanifest` is `application/manifest+json`, assets are immutable, and CSP/Permissions-Policy/frame protection headers are present.
+The configured deployment action is the `main` push; `fab74f76443e27b27b4a7b4de1d910b05eac5eac` was pushed to `origin/main` successfully. The production artifact is `dist/` with `index.html` at its root and includes `dist/_headers`.
+
+At 00:53 UTC, repeated live checks still returned the prior candidate asset `main-MJvIny2N.js`, `application/octet-stream` for `/manifest.webmanifest`, and the prior 30-second cache policy. The work order supplies no direct deployment endpoint or credentials beyond the static build/push configuration, so the factory deployment has not surfaced during this worker run. Once the pushed commit is published, verify the live site serves `main-BBpWre9R.js` (or the deployment’s equivalent rebuilt hash), confirm `sw.js` bytes match the new artifact, and confirm `/manifest.webmanifest` is `application/manifest+json`, assets are immutable, and CSP/Permissions-Policy/frame protection headers are present.
 
 ## Known product limits
 
