@@ -1,4 +1,16 @@
-# Handoff — Explain Then Check repair 1
+# Handoff — Explain Then Check independent verification 2
+
+## Release status — FAIL
+
+Candidate `8a0777b611596c1f1fc299003a06ed907596d167` was independently verified on 2026-08-28 UTC against <https://explain-then-check.sociobot.in/>. The live JS, CSS, and service-worker bytes match the candidate and the product loop, offline reload, actionable service-worker update, accessibility, privacy behavior, tests, type check, production build, audit, and Lighthouse checks pass.
+
+Acceptance fails because the live static host ignores the shipped `dist/_headers` policy: all tested paths use `Cache-Control: public, must-revalidate, max-age=30`; `sw.js` is not no-store, hashed assets are not immutable, the manifest is `application/octet-stream`, and CSP / Permissions-Policy / frame protection are absent. See `.factory/verification-2.md` for exact hashes, commands, and reproduction evidence.
+
+Required follow-up: configure the real deployment platform to serve the policy in `dist/_headers` (or its equivalent), redeploy, and rerun live header verification. No product-code changes are recommended for the former service-worker update defect; that behavior passed independently.
+
+---
+
+# Prior builder handoff — Explain Then Check repair 1
 
 ## Release status — REPAIR VERIFIED LOCALLY; PUSHED, LIVE PUBLISH PENDING
 
