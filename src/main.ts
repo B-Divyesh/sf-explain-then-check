@@ -19,6 +19,8 @@ let checkStage = false;
 let omissionRows = 1;
 let retryReflectStage = false;
 let toastTimeout: number | undefined;
+let updateReady = false;
+let updateRegistration: ServiceWorkerRegistration | undefined;
 
 const live = document.createElement('div');
 live.className = 'sr-only';
@@ -287,8 +289,11 @@ async function render(): Promise<void> {
     } else { app.innerHTML = homeScreen(); setupHome(); }
     setupNav();
     updateNetworkState();
+    showUpdatePrompt();
   } catch (error) {
-    app.innerHTML = shell(`<main id="main" class="error-page"><p class="eyebrow dark">The notebook would not open</p><h1>Your local storage is unavailable.</h1><p>${escapeHtml(error instanceof Error ? error.message : 'The browser blocked its local database.')}</p><p>Check private-browsing or storage settings, then reload. No remote copy exists.</p><button class="button" onclick="location.reload()">Try again</button></main>`);
+    app.innerHTML = shell(`<main id="main" class="error-page"><p class="eyebrow dark">The notebook would not open</p><h1>Your local storage is unavailable.</h1><p>${escapeHtml(error instanceof Error ? error.message : 'The browser blocked its local database.')}</p><p>Check private-browsing or storage settings, then reload. No remote copy exists.</p><button class="button" id="reload-app">Try again</button></main>`);
+    document.querySelector<HTMLButtonElement>('#reload-app')?.addEventListener('click', () => location.reload());
+    showUpdatePrompt();
   }
 }
 
@@ -474,6 +479,18 @@ function showToast(message: string, action?: string, handler?: () => void): void
   toastTimeout = window.setTimeout(() => { region.innerHTML = ''; }, 6500);
 }
 
+function showUpdatePrompt(): void {
+  if (!updateReady || !updateRegistration?.waiting) return;
+  const region = document.querySelector<HTMLElement>('#toast-region');
+  if (!region) return;
+  region.innerHTML = '<div class="toast toast-update"><span>A fresh version is ready.</span><button type="button">Update</button></div>';
+  region.querySelector('button')?.addEventListener('click', () => {
+    updateReady = false;
+    updateRegistration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    region.innerHTML = '<div class="toast"><span>Updating your practice garden…</span></div>';
+  });
+}
+
 function updateNetworkState(): void {
   const state = document.querySelector('#network-state');
   if (state) state.textContent = navigator.onLine ? 'Saved locally' : 'Offline · saved locally';
@@ -484,11 +501,15 @@ async function registerServiceWorker(): Promise<void> {
   if (!('serviceWorker' in navigator) || import.meta.env.DEV) return;
   const hadController = Boolean(navigator.serviceWorker.controller);
   const registration = await navigator.serviceWorker.register('/sw.js');
-  const offerUpdate = () => showToast('A fresh version is ready.', 'Update', () => registration.waiting?.postMessage({ type: 'SKIP_WAITING' }));
+  const offerUpdate = () => { updateReady = true; updateRegistration = registration; showUpdatePrompt(); };
   if (registration.waiting) offerUpdate();
-  registration.addEventListener('updatefound', () => registration.installing?.addEventListener('statechange', () => {
-    if (registration.installing?.state === 'installed' && navigator.serviceWorker.controller) offerUpdate();
-  }));
+  registration.addEventListener('updatefound', () => {
+    // Keep this worker reference: registration.installing becomes null once it moves to waiting.
+    const installing = registration.installing;
+    installing?.addEventListener('statechange', () => {
+      if (installing.state === 'installed' && navigator.serviceWorker.controller) offerUpdate();
+    });
+  });
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !refreshing) { refreshing = true; location.reload(); } });
 }

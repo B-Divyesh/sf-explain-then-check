@@ -1,5 +1,35 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { createServer } from 'node:http';
+import { readFile, stat } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+async function startUpdateServer(): Promise<{ origin: string; publishUpdate: () => void; close: () => Promise<void> }> {
+  const dist = resolve(process.cwd(), 'dist');
+  let updated = false;
+  const server = createServer(async (request, response) => {
+    const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
+    const relativePath = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
+    const file = resolve(dist, `.${relativePath}`);
+    if (!file.startsWith(`${dist}/`)) { response.writeHead(403).end(); return; }
+    try {
+      const info = await stat(file);
+      if (info.isDirectory()) { response.writeHead(404).end(); return; }
+      let body = await readFile(file);
+      if (pathname === '/sw.js' && updated) body = Buffer.concat([body, Buffer.from('\n// update-test-v2')]);
+      const type = pathname.endsWith('.js') ? 'application/javascript' : pathname.endsWith('.css') ? 'text/css' : pathname.endsWith('.webmanifest') ? 'application/manifest+json' : pathname.endsWith('.html') || pathname.endsWith('/') ? 'text/html' : 'application/octet-stream';
+      response.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' }).end(body);
+    } catch { response.writeHead(404).end(); }
+  });
+  await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Could not start update test server.');
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    publishUpdate: () => { updated = true; },
+    close: () => new Promise((resolveClose, rejectClose) => server.close((error) => error ? rejectClose(error) : resolveClose()))
+  };
+}
 
 test('completes the explain, mark, retry, and clearer loop', async ({ page }) => {
   const errors: string[] = [];
@@ -75,6 +105,59 @@ test('works at 390px and reloads offline after installation', async ({ page, con
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Say what you know');
   await expect(page.locator('#network-state')).toContainText('Offline');
   await context.setOffline(false);
+});
+
+test('offers and applies an update when a new service worker is waiting', async ({ browser }) => {
+  const server = await startUpdateServer();
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    await page.goto(server.origin);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+
+    server.publishUpdate();
+    await page.evaluate(async () => { await (await navigator.serviceWorker.ready).update(); });
+    await expect(page.getByText('A fresh version is ready.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
+
+    const refreshed = page.waitForEvent('framenavigated', (frame) => frame === page.mainFrame());
+    await page.getByRole('button', { name: 'Update' }).click();
+    await refreshed;
+    await page.waitForLoadState('domcontentloaded');
+    await expect.poll(() => page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.ready;
+      return !registration.waiting && Boolean(navigator.serviceWorker.controller);
+    })).toBe(true);
+  } finally {
+    await context.close();
+    await server.close();
+  }
+});
+
+test('keeps desktop home and legal links at the 44px target minimum', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  const dimensions = await page.locator('.brand, .site-footer a').evaluateAll((links) => links.map((link) => {
+    const { width, height } = link.getBoundingClientRect();
+    return { width, height };
+  }));
+  expect(dimensions).toHaveLength(3);
+  for (const { width, height } of dimensions) {
+    expect(width).toBeGreaterThanOrEqual(44);
+    expect(height).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('ships static-host cache, manifest, and hardening policies', async () => {
+  const headers = await readFile(resolve(process.cwd(), 'public/_headers'), 'utf8');
+  expect(headers).toContain('/assets/*\n  Cache-Control: public, max-age=31536000, immutable');
+  expect(headers).toContain('/manifest.webmanifest\n  Cache-Control: public, max-age=86400, must-revalidate\n  Content-Type: application/manifest+json; charset=utf-8');
+  expect(headers).toContain('/sw.js\n  Cache-Control: no-cache, no-store, must-revalidate');
+  expect(headers).toContain("Content-Security-Policy: default-src 'self'");
+  expect(headers).toContain('Permissions-Policy: camera=(), geolocation=(), microphone=(self), payment=(), usb=()');
+  expect(headers).toContain('X-Frame-Options: DENY');
 });
 
 test('serves privacy and terms at their direct paths', async ({ page }) => {

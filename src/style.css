@@ -79,6 +79,7 @@ img { display: block; max-width: 100%; }
 }
 
 .brand {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 11px;
@@ -307,7 +308,7 @@ select { min-height: 44px; padding: 8px 34px 8px 10px; }
 
 .site-footer { display: grid; grid-template-columns: 1fr auto; gap: 12px 32px; padding: 42px max(24px, calc((100vw - 1160px) / 2)) max(42px, env(safe-area-inset-bottom)); background: var(--night); color: #d8d1de; font-size: 13px; }
 .site-footer p { margin: 0; }
-.site-footer a { color: #f1c1b5; margin-left: 18px; }
+.site-footer a { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #f1c1b5; margin-left: 18px; }
 .site-footer .art-credit { grid-column: 1/-1; color: #918b9f; font-size: 11px; }
 .toast-region { position: fixed; z-index: 50; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); }
 .toast { display: flex; align-items: center; gap: 22px; max-width: 440px; padding: 14px 18px; border: 1px solid #615780; background: var(--night); color: white; box-shadow: 0 10px 30px rgb(0 0 0 / 28%); }
@@ -376,7 +377,7 @@ select { min-height: 44px; padding: 8px 34px 8px 10px; }
   .omission-options select { width: 100%; margin: 0; }
   .site-footer { grid-template-columns: 1fr; }
   .site-footer div { display: flex; gap: 20px; }
-  .site-footer a { min-height: 44px; display: inline-flex; align-items: center; margin: 0; }
+  .site-footer a { margin: 0; }
   .site-footer .art-credit { grid-column: auto; }
   .toast-region { inset-inline: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
   .toast { max-width: none; justify-content: space-between; }

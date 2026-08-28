@@ -11,6 +11,7 @@ describe('practice utilities', () => {
     const now = new Date('2026-08-27T12:00:00Z');
     expect(isDue('2026-08-27T09:00:00Z', now)).toBe(true);
     expect(relativeDue('2026-08-28T09:00:00Z', now)).toBe('Due tomorrow');
+    expect(dueDate(0, now)).toBe(now.toISOString());
     expect(dueDate(1, now)).toContain('2026-08-28');
   });
 

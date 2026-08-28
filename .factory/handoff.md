@@ -1,39 +1,43 @@
-# Handoff — Explain Then Check v1
+# Handoff — Explain Then Check repair 1
 
-## Independent verification status — **FAIL**
+## Release status — READY FOR STATIC DEPLOY
 
-Candidate `6b9945a8b20e642b38dfac330d1b3c70deef9752` was independently verified on 2026-08-27 against <https://explain-then-check.sociobot.in/>. The live JS, CSS, and service-worker bytes match this candidate exactly; the prior deployment-only concern is not present.
+This repair addresses every finding in independent verifier report `091e1c1d67bf9538325a50c568e0e74b62884b8c` for candidate `6b9945a8b20e642b38dfac330d1b3c70deef9752` without changing the researched brief or the local-first practice loop.
 
-The release is nevertheless **FAIL** because an actual service-worker update produces a waiting installed worker but no in-app update toast/button. Users cannot trigger the available `SKIP_WAITING` path, violating the PWA update acceptance requirement. There are also P2 touch-target and deployment cache/manifest-header findings. Full command output, reproduction details, and severities are in `.factory/verification.md`.
+## Repairs made
 
-## What shipped
+- **P1 actionable PWA updates:** retained the installing worker captured by `updatefound`, so its eventual `installed` state is detected even after the registration moves it to `waiting`. A persistent “A fresh version is ready.” toast exposes an **Update** button, posts `SKIP_WAITING`, and reloads on `controllerchange`. The production build now derives its cache name from the precache manifest, so a new asset set uses a new cache.
+- **P2 44px desktop targets:** the branded home link and both footer legal links now have at least 44×44 CSS-pixel hit areas at 1440px, while retaining the existing compact mobile treatment.
+- **P2 response policy:** added the deployable `public/_headers` policy file (copied to `dist/_headers`) for immutable hashed/static assets, no-store service-worker revalidation, manifest JSON media type, and no-cache document routes.
+- **P3 browser hardening:** the same host policy adds CSP, `Permissions-Policy` (only the app’s self-origin microphone capability remains enabled), `X-Frame-Options: DENY`, `nosniff`, and a strict referrer policy. The former inline error-page reload handler was converted to an event listener so it works under CSP.
+- **Same-day retry correctness:** selecting “today” now makes a retry due immediately rather than at 09:00. This removes the early-day mismatch between the UI choice and its availability while preserving tomorrow/3-day/weekly scheduling.
 
-- A complete local-first practice loop: create/revisit a concept, write under **what / why / failure case** cues or make a local audio recording, check the explanation yourself, mark multiple precise omissions, choose a retry date, and retry only one missing piece.
-- Each retry records the new attempt and asks whether it felt clearer. “Clearer” closes the piece; “not yet” returns it tomorrow. The UI explicitly makes no correctness claim.
-- An optional, non-blocking 90-second timer; keyboard-operable forms; auto-saved text drafts; due/upcoming queues; recent practice; retry removal with undo; and specific empty, error, denied-microphone, offline, and destructive-confirmation states.
-- IndexedDB persistence with JSON/CSV export, JSON restore, and full deletion. Audio blobs remain local and are intentionally omitted from portable exports.
-- An installable PWA with 192/512 maskable-capable icons, a versioned precache assembled from the production output, navigation fallback, cache-first assets, and an update toast.
-- Direct `/privacy/` and `/terms/` pages, no analytics, no runtime third-party scripts/fonts, MIT license, sitemap, and robots policy.
-- A product-specific surreal editorial system and original “impossible study garden” hero. The generated 1536×1024 source and prompt metadata are retained in `assets/src/`; the shipped WebP is 52 KB. Provenance and review criteria are in `.factory/design.md`.
+## Exact verification evidence
 
-## How to run and verify
+Executed from a clean dependency install on 2026-08-28 UTC:
 
 ```sh
 npm ci
 npm test
 npm run build
-npm run preview
+npm audit --audit-level=high
 ```
 
-- `npm test`: **pass** — 3 unit tests and 4 Chromium end-to-end tests. Browser coverage includes the full explain→mark→retry→clearer path, keyboard entry, draft persistence across reload, JSON export, a 390×844 layout overflow check, direct legal URLs, serious/critical Axe checks, and a real offline reload with `context.setOffline(true)`.
-- `npm run build`: **pass** — produces `dist/index.html`; compiled initial assets are 31.65 KB JS (10.93 KB gzip) and 18.25 KB CSS (5.15 KB gzip).
+- `npm ci`: 72 packages installed; audit reported 0 vulnerabilities.
+- `npm test`: **pass** — 3 Vitest unit tests and 7 Chromium Playwright tests.
+  - The e2e update regression serves the built `dist/` from a local HTTP server, registers the worker, changes only the `sw.js` response, calls `registration.update()`, verifies the visible update toast/button, clicks it, and verifies the waiting worker activates after reload.
+  - Browser checks cover the complete explain → omission → retry → clearer loop, immediate same-day retry, keyboard entry/draft recovery/export, direct legal routes, 390×844 offline reload via `context.setOffline(true)`, zero serious/critical Axe violations, desktop 44px target measurements, and the shipped static response/security policy rules.
+- `npm run build`: **pass** — `dist/index.html` is present. Initial compiled JS is 32.13 KB (11.05 KB gzip); CSS is 18.30 KB (5.15 KB gzip); hero WebP remains 52.3 KB.
 - `npm audit --audit-level=high`: **pass**, 0 vulnerabilities.
-- Lighthouse 12.8.2 mobile run against the production preview: **Performance 100, Accessibility 100, Best Practices 100, SEO 100**. LCP 1.4 s, CLS 0, total blocking time 0 ms.
-- Visual review performed at 1440×1000 and 390×844. The selected illustration was checked for unwanted text, logos, people, seams, and misleading UI.
+- Lighthouse 12.8.2 mobile against `npm run preview`: **Performance 100, Accessibility 100, Best Practices 100, SEO 100**; LCP 1.1 s, CLS 0, total blocking time 0 ms.
+- Local visual/browser review: desktop 1440×1000 and mobile 390×844 tests pass with no horizontal overflow; focus styles remain the designed 3px iris outline. No console/page errors were observed by the end-to-end product-path test.
 
-## Known limits / next steps
+## Deploy and live checks
 
-- Audio is intentionally device-only and absent from exports; users who need a durable audio archive must retain it separately.
-- There are no OS-level reminder notifications. Due pieces surface when the app opens, keeping v1 permission-light and offline.
-- Browser storage can be evicted by the browser or cleared by the user. The UI and privacy page recommend exports for important records.
-- The brief’s adoption targets cannot be measured without tracking. The data model records local retry counts and clearer outcomes, so a future opt-in, privacy-preserving aggregate could be added if evidence warrants it.
+Static deployment is triggered from `main`. The production artifact is `dist/` with `index.html` at its root and includes `dist/_headers`; deploy hosts must honor that standard static-host policy file. After the push, verify `https://explain-then-check.sociobot.in/` serves the new hashed JS/CSS and `sw.js` bytes, then confirm `/manifest.webmanifest` is `application/manifest+json`, assets are immutable, and CSP/Permissions-Policy/frame protection headers are present.
+
+## Known product limits
+
+- Audio remains device-only and is intentionally omitted from exports; retain it separately if it must be archived.
+- There are no OS-level reminders; due pieces appear on opening the app, avoiding notification permissions.
+- Browser storage can be evicted or cleared. Export important text records periodically.

@@ -17,6 +17,8 @@ export function escapeHtml(value: string): string {
 }
 
 export function dueDate(offsetDays: number, from = new Date()): string {
+  // “Today” is an explicit request to retry now, not at a later default hour.
+  if (offsetDays === 0) return from.toISOString();
   const due = new Date(from);
   due.setDate(due.getDate() + offsetDays);
   due.setHours(9, 0, 0, 0);

@@ -1,4 +1,5 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { join, relative } from 'node:path';
 
 async function files(dir) {
@@ -14,4 +15,8 @@ const paths = (await files(root))
   .map((path) => path.endsWith('/index.html') ? path.slice(0, -10) : path === '/index.html' ? '/' : path);
 const swPath = join(root, 'sw.js');
 const source = await readFile(swPath, 'utf8');
-await writeFile(swPath, source.replace("self.__PRECACHE__ || ['/', '/offline.html', '/manifest.webmanifest']", JSON.stringify([...new Set(paths)])));
+const precache = [...new Set(paths)];
+const version = `etc-${createHash('sha256').update(JSON.stringify(precache)).digest('hex').slice(0, 12)}`;
+await writeFile(swPath, source
+  .replace("const VERSION = 'etc-v1';", `const VERSION = '${version}';`)
+  .replace("self.__PRECACHE__ || ['/', '/offline.html', '/manifest.webmanifest']", JSON.stringify(precache)));
