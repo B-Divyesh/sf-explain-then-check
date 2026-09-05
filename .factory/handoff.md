@@ -69,6 +69,12 @@ main-BBpWre9R.js asset, so it had not yet picked up implementation SHA
 demo, phone and desktop flows, headers, and 404 after the factory static
 publish completes.
 
+A direct production deploy was also attempted with the product-scoped Static
+Web Apps CLI target and dist output. It authenticated and began checking the
+named app, but did not return a completed publish before its bounded timeout.
+The temporary local credential file it created was removed without being read
+or committed.
+
 ### Known product limits
 
 - Audio remains device-only and is intentionally omitted from text exports.
