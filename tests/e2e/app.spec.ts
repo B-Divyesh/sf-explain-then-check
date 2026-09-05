@@ -78,6 +78,9 @@ async function addAudioAttempt(page: Page): Promise<void> {
 }
 
 test('@claim:demo-isolation loads sample output, resets it, and keeps real data separate', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page.getByLabel('Demo mode')).toContainText('sample data, nothing is saved');
+  await expect(page.locator('.concept-row strong', { hasText: 'Rate limiting' })).toBeVisible();
   await page.goto('/');
   await page.getByLabel('Concept or mechanism').fill('Real notebook record');
   await page.getByRole('button', { name: 'Begin explanation' }).click();
