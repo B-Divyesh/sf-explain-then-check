@@ -69,6 +69,11 @@ main-BBpWre9R.js asset, so it had not yet picked up implementation SHA
 demo, phone and desktop flows, headers, and 404 after the factory static
 publish completes.
 
+Fresh HTTPS Chromium desktop (1440×1000) and phone (390×844) observations
+confirm that mismatch: both still show the prior title and prior Say what you
+know heading, without the sample action. Both had zero horizontal overflow and
+zero console errors, but neither observation is evidence for this repair.
+
 A direct production deploy was also attempted with the product-scoped Static
 Web Apps CLI target and dist output. It authenticated and began checking the
 named app, but did not return a completed publish before its bounded timeout.
