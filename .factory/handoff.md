@@ -1,5 +1,82 @@
 # Handoff — Explain Then Check
 
+## Repair 3 — implementation repaired and pushed (2026-09-05 UTC)
+
+Implementation SHA: 26588a06987050341bdbb1c2d0856bb8c94c6869
+(fix: add isolated demo and verifiable claims). This is the product-image
+candidate. Any later handoff-only commit is documentation-only.
+
+The repair resolves every finding in review-1 at its cause:
+
+- A real /demo entry seeds a populated rate-limiting practice and due focused
+  retry in the separate demo:explain-then-check IndexedDB database. The
+  persistent Demo banner provides Reset demo and Start for real. Demo drafts
+  have a demo:etc: prefix; real records use their existing namespace.
+- .factory/claims.json lists 20 public claims. Each has exactly one
+  Playwright outcome test tagged @claim:id and an executable command. A fresh
+  clone, npm ci, and every declared claim command passed.
+- The first screen now says the job, names technical self-learners, puts Try it
+  with sample data first, explains what happens next, and lists private,
+  offline, and free facts. .factory/copy-audit.md records the landing copy.
+- Practice and retry now have real path URLs, route-specific titles, heading
+  focus and polite announcements. /demo is a real route. Azure route rewrites
+  cover known app paths while unknown paths return the designed HTTP 404 page.
+  Home, legal, demo, and 404 output have canonical, Open Graph, Twitter,
+  favicon, and apple-touch metadata.
+- The timer no longer creates an inline style. It uses static SVG/CSS with
+  dynamically updated SVG attributes, which remains valid under the deployed
+  style-src self CSP. The normal practice route records zero console errors.
+
+Earlier service-worker update, target-size, header/cache, manifest MIME, and
+hardening findings stay covered by production-artifact browser checks. The app
+remains local-first; no backend, tenant, payment, or external integration was
+added.
+
+### Verification
+
+Run from the repaired checkout:
+
+    npm ci
+    npm test
+    npm run build
+
+Results:
+
+- npm test passed: 3 unit tests and 22 Chromium production-artifact browser
+  tests, including all claim tests, normal/invalid/recovery paths, CSP,
+  desktop/mobile layout, keyboard focus, route behavior, 404, update flow,
+  privacy requests, offline reload, and Axe serious/critical checks.
+- npm run build passed. dist/ contains index.html and the Static Web Apps
+  configuration.
+- A fresh clone at the implementation SHA ran npm ci and all 20 commands from
+  .factory/claims.json. Every command passed.
+- The worker verify-url.sh check against the built /demo route passed with
+  title, lang, one main, one h1, image alt text, and zero browser console
+  errors. The standalone Axe CLI could not locate a system Chrome binary in
+  this container; the repository Playwright Axe integration passed on the same
+  CSP-served production artifact.
+- Local Lighthouse mobile on /demo: Performance 100, Accessibility 100, Best
+  Practices 100, SEO 100; LCP 1365 ms, CLS 0, TBT 0 ms.
+- Production payload: JavaScript 37,219 B (12,506 B gzip), CSS 20,515 B
+  (5,567 B gzip), hero WebP 52.3 KB, social preview WebP 58.1 KB.
+
+### Publish status
+
+The implementation was pushed to origin/main. At the latest HTTPS cold check
+during this handoff, the public site still referenced the earlier
+main-BBpWre9R.js asset, so it had not yet picked up implementation SHA
+26588a0. The previous release remained healthy. Verify the new asset identity,
+demo, phone and desktop flows, headers, and 404 after the factory static
+publish completes.
+
+### Known product limits
+
+- Audio remains device-only and is intentionally omitted from text exports.
+- The app has no operating-system notification or reminder permission; due
+  pieces appear when the learner opens it.
+- Browser-managed local storage can be evicted or cleared, so important text
+  records should be exported.
+
 ## Review 1 — FAIL (2026-09-05 UTC)
 
 The current independent review is **FAIL**, not release-ready. It reviewed implementation candidate `0ce4319d5f7d592b631f77271d523fb9d69a4a69`; the documentation/report SHA is `3979c8e99fb30a5e70c1b51e37edf035b77f2378`. The live JavaScript, CSS, and service-worker bytes match the local candidate build and the earlier service-worker/cache/header findings are resolved.
