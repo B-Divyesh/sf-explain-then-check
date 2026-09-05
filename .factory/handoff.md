@@ -1,5 +1,30 @@
 # Handoff — Explain Then Check
 
+## Independent verification 5 — FAIL (2026-09-05 UTC)
+
+Implementation candidate: `26588a06987050341bdbb1c2d0856bb8c94c6869`.
+Documentation/test SHA reviewed: `3d888f477a2ebaf8fed5c74d087788488c1f8cc0`.
+
+The live assets match the implementation candidate exactly and the demo, normal
+practice/retry, invalid/recovery, desktop/phone, keyboard, legal, 404,
+metadata, privacy-request, reduced-motion, and serious/critical Axe checks
+passed. `npm ci`, `npm test`, `npm run build`, `npm audit --audit-level=high`,
+and every one of the 20 declared claim commands passed in a clean checkout.
+
+Release status is nevertheless **FAIL** with one P1 finding and zero untested
+claims. Live `sw.js` tries to precache `/staticwebapp.config.json`, which Azure
+deliberately returns as HTTP 404. `cache.addAll()` therefore aborts the worker
+installation: after five seconds there is no service-worker registration or
+controller and the only cache has zero entries. The live offline-reload and
+app-shell-cache public claims are false; a live update cannot be offered
+either. The local claim commands miss this because `scripts/serve-dist.mjs`
+serves the deployment configuration as a normal file.
+
+Remove deployment-only files from the generated precache list and add a
+regression test with `/staticwebapp.config.json` unavailable. Redeploy, then
+repeat the fresh live controlled-offline reload and update checks. Full evidence
+is in `.factory/verification-5.md`.
+
 ## Repair 3 — implementation repaired and pushed (2026-09-05 UTC)
 
 Implementation SHA: 26588a06987050341bdbb1c2d0856bb8c94c6869
