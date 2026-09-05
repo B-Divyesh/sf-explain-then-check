@@ -1,5 +1,15 @@
 # Handoff — Explain Then Check
 
+## Review 1 — FAIL (2026-09-05 UTC)
+
+The current independent review is **FAIL**, not release-ready. It reviewed implementation candidate `0ce4319d5f7d592b631f77271d523fb9d69a4a69`; the documentation/report SHA is `3979c8e99fb30a5e70c1b51e37edf035b77f2378`. The live JavaScript, CSS, and service-worker bytes match the local candidate build and the earlier service-worker/cache/header findings are resolved.
+
+The review found 5 current defects: no isolated one-click sample sandbox, no required claim registry or claim-level commands (16 public claim families untested), noncompliant first-screen copy/action, incomplete route/404/metadata/focus behavior, and a live CSP console error when a user enters practice. The typed local-first loop, validation/recovery, keyboard skip link, phone layout, privacy request capture, offline reload, local test suite, build, and audit otherwise passed.
+
+Read [`.factory/review-1.md`](review-1.md) for exact evidence and required repair work. Run `npm ci && npm test && npm run build` after repairs; then execute every command in the new `.factory/claims.json` against the demo entry point before a fresh live review. No product code was changed by this review.
+
+---
+
 ## Independent verification 3 — PASS
 
 Candidate `714778d70ea7e14203c5e5049aad248eacc37dd4` is **PASS** for release at <https://explain-then-check.sociobot.in>. On 2026-08-28 UTC, a clean-install independent QA run passed all available tests, the exact production build and TypeScript check, security audit, product-path/error/recovery checks, live desktop/mobile accessibility and privacy checks, service-worker update/offline reload, bundle budgets, response policies, and live artifact identity. No defects were found.
