@@ -1,47 +1,75 @@
 # Explain Then Check
 
-Explain Then Check is a local-first practice tool for technical self-learners who can recognize a topic but want to know whether they can explain it. A practice has three cues—what it is, why it works, and a failure case—followed by a learner-led check. Only the pieces the learner marks missing are scheduled for a focused retry.
+Explain Then Check helps technical self-learners explain a concept in their own
+words. Write what it is, why it works, and one failure case. Mark only the
+piece you missed. Retry that piece later.
 
-There is no answer grading, generated lecture, account, or classroom. Data and optional audio stay in the browser. Text records can be exported as JSON or CSV, restored from JSON, or deleted.
+Use the one-click demo at https://explain-then-check.sociobot.in/demo. It loads
+a completed rate-limiting practice and a due retry. The Demo banner says that
+sample data is not saved, lets you reset it, and lets you start with your real
+notebook.
 
-Live: <https://explain-then-check.sociobot.in>
+The tool has no account, grading, tracking, or payment step. Text records use browser storage. Optional audio is stored in
+IndexedDB and stays out of JSON and CSV exports. You can export JSON or CSV,
+restore a valid JSON backup, and delete local records.
+
+Live: https://explain-then-check.sociobot.in
 
 ## Run locally
 
 Requirements: Node.js 20+ and npm.
 
-```sh
+~~~
 npm ci
 npm run dev
-```
+~~~
 
-Vite prints the local URL, normally `http://localhost:5173`.
+Vite prints a local URL, normally http://localhost:5173.
 
 ## Test and build
 
-```sh
-npm test          # unit + Playwright end-to-end, accessibility, mobile, offline
-npm run build     # exact production build; output is dist/
-npm run preview   # serve the built app on http://127.0.0.1:4173
-```
+~~~
+npm test
+npm run build
+npm run preview
+~~~
 
-Playwright is pinned to 1.58.2. If its Chromium binary is not already present, run `npx playwright install chromium` once.
+The production artifact is dist/ with index.html at its root. Browser tests
+serve dist/ through the product's Static Web Apps route and CSP policy.
 
-`npm run assets` regenerates the committed WebP and PNG derivatives from the retained hero source. It is not needed for a normal build.
+Every public product promise is listed in .factory/claims.json. Run one claim
+from a clean install with its exact test command. For example:
 
-## Deploy
+~~~
+npm run test:e2e -- --grep @claim:offline-reload
+~~~
 
-Upload the contents of `dist/` to any static host. `index.html`, `privacy/index.html`, and `terms/index.html` are emitted at their respective roots. The artifact includes both `_headers` and `staticwebapp.config.json`: use the host-native one (the latter is applied by Azure Static Web Apps) so hashed assets are immutable, `sw.js` is never stored, the manifest has its JSON media type, and the CSP/frame/permissions policy is sent. Serve files over HTTPS so microphone capture and service-worker installation are available. No environment variables or backend are required.
+Run all claim commands after npm ci. Playwright is pinned to 1.58.2. If
+Chromium is missing, install it once with npx playwright install chromium.
 
 ## Data and offline behavior
 
-- Concepts, attempts, omissions, retry outcomes, and recordings use IndexedDB.
-- In-progress text drafts use localStorage and survive a refresh.
-- JSON export/import is the complete portable text format. CSV is a readable analysis format. Audio remains device-only and is not exported.
-- The service worker precaches the built shell and applies network-first navigation plus cache-first static assets.
+- Records use IndexedDB. Draft text uses localStorage and survives refresh.
+- The service worker caches the app shell. The demo reloads offline after its
+  first online visit.
+- JSON is the portable text backup. CSV is an export format. Audio is not
+  exported.
+- The app shows an Update action when a newer service worker is waiting.
 
-Product research is in [`.factory/brief.json`](.factory/brief.json), visual rationale and image provenance in [`.factory/design.md`](.factory/design.md), and verification details in [`.factory/handoff.md`](.factory/handoff.md).
+## Deploy
+
+Deploy dist/ to the configured Azure Static Web Apps product. The artifact
+includes staticwebapp.config.json with known application routes, a 404 rewrite,
+cache rules, MIME mapping, CSP, and security headers. It also contains
+_headers for compatible static hosts. Serve over HTTPS for service workers and
+microphone capture.
+
+No environment variables or backend are required.
+
+Research: .factory/brief.json. Visual rationale and image provenance:
+.factory/design.md. Demo details: .factory/demo.md. Verification handoff:
+.factory/handoff.md.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See LICENSE.

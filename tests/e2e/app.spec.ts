@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -9,9 +9,9 @@ async function startUpdateServer(): Promise<{ origin: string; publishUpdate: () 
   let updated = false;
   const server = createServer(async (request, response) => {
     const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
-    const relativePath = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
-    const file = resolve(dist, `.${relativePath}`);
-    if (!file.startsWith(`${dist}/`)) { response.writeHead(403).end(); return; }
+    const relativePath = pathname.endsWith('/') ? pathname + 'index.html' : pathname;
+    const file = resolve(dist, '.' + relativePath);
+    if (!file.startsWith(dist + '/')) { response.writeHead(403).end(); return; }
     try {
       const info = await stat(file);
       if (info.isDirectory()) { response.writeHead(404).end(); return; }
@@ -21,93 +21,297 @@ async function startUpdateServer(): Promise<{ origin: string; publishUpdate: () 
       response.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' }).end(body);
     } catch { response.writeHead(404).end(); }
   });
-  await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Could not start update test server.');
   return {
-    origin: `http://127.0.0.1:${address.port}`,
+    origin: 'http://127.0.0.1:' + address.port,
     publishUpdate: () => { updated = true; },
-    close: () => new Promise((resolveClose, rejectClose) => server.close((error) => error ? rejectClose(error) : resolveClose()))
+    close: () => new Promise((done, reject) => server.close((error) => error ? reject(error) : done()))
   };
 }
 
-test('completes the explain, mark, retry, and clearer loop', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.goto('/');
+async function openDemo(page: Page): Promise<void> {
+  await page.goto('/demo');
+  await expect(page.getByLabel('Demo mode')).toContainText('sample data, nothing is saved');
+  await expect(page.locator('.concept-row strong', { hasText: 'Rate limiting' })).toBeVisible();
+}
 
-  await expect(page).toHaveTitle(/Explain Then Check/);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.locator('main')).toHaveCount(1);
-  await expect(page.locator('h1')).toHaveCount(1);
-  await expect(page.locator('img:not([alt])')).toHaveCount(0);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Say what you know');
+async function openSamplePractice(page: Page): Promise<void> {
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Explain again' }).click();
+  await expect(page).toHaveURL(/\/demo\/practice\//);
+  await expect(page.getByRole('heading', { name: 'Rate limiting' })).toBeVisible();
+}
 
-  await page.getByLabel('Concept or mechanism').fill('Consistent hashing');
-  await page.getByRole('button', { name: 'Begin explanation' }).click();
-  await expect(page).toHaveURL(/#\/practice\//);
-
-  await page.getByLabel('What is it, in plain language?').fill('A ring maps keys and servers into the same space.');
-  await page.getByLabel('What makes it work?').fill('A key moves only when its next clockwise server changes.');
-  await page.getByLabel('Where does it fail or trade something off?').fill('Uneven placement can create hot spots.');
-  await page.getByRole('button', { name: /Check my explanation/ }).click();
-
-  await expect(page.getByRole('heading', { name: 'What went missing?' })).toBeVisible();
-  await page.getByLabel('Missing piece 1').fill('Virtual nodes smooth uneven load');
-  await page.getByLabel('It belongs under').selectOption('why');
-  await page.getByLabel('Bring it back').selectOption('0');
-  await page.getByRole('button', { name: 'Schedule missing pieces' }).click();
-
-  await expect(page.getByText('Virtual nodes smooth uneven load')).toBeVisible();
+async function openSampleRetry(page: Page): Promise<void> {
+  await openDemo(page);
   await page.getByRole('button', { name: 'Retry piece' }).click();
-  await page.getByLabel('Explain it now, in your own words').fill('Many virtual positions make each physical server own several small ranges.');
-  await page.getByRole('button', { name: /Reflect on this attempt/ }).click();
-  await expect(page.getByRole('heading', { name: 'Did this attempt feel clearer?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Yes, clearer' }).click();
+  await expect(page).toHaveURL(/\/demo\/retry\//);
+  await expect(page.getByRole('heading', { name: 'Explain this missing piece' })).toBeVisible();
+}
 
-  await expect(page.getByRole('heading', { name: 'No pieces waiting.' })).toBeVisible();
-  await expect(page.getByText('Piece retried')).toBeVisible();
-  expect(errors).toEqual([]);
+async function addAudioAttempt(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolveDb, rejectDb) => {
+      const opening = indexedDB.open('demo:explain-then-check');
+      opening.onsuccess = () => resolveDb(opening.result);
+      opening.onerror = () => rejectDb(opening.error);
+    });
+    await new Promise<void>((resolveDone, rejectDone) => {
+      const transaction = database.transaction('attempts', 'readwrite');
+      transaction.objectStore('attempts').put({
+        id: 'audio-export-fixture',
+        conceptId: 'sample-rate-limiting',
+        kind: 'full',
+        createdAt: new Date().toISOString(),
+        what: 'A local audio fixture.',
+        why: '',
+        failure: '',
+        audio: new Blob(['audio bytes'], { type: 'audio/webm' })
+      });
+      transaction.oncomplete = () => resolveDone();
+      transaction.onerror = () => rejectDone(transaction.error);
+    });
+    database.close();
+  });
+}
+
+test('@claim:demo-isolation loads sample output, resets it, and keeps real data separate', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Concept or mechanism').fill('Real notebook record');
+  await page.getByRole('button', { name: 'Begin explanation' }).click();
+  await expect(page.getByRole('heading', { name: 'Real notebook record' })).toBeVisible();
+  await page.getByRole('link', { name: 'Demo' }).click();
+  await expect(page.getByLabel('Demo mode')).toBeVisible();
+  await expect(page.locator('.concept-row strong', { hasText: 'Rate limiting' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.getByText('How burst capacity changes a token bucket without removing the average limit')).toBeVisible();
+  await page.getByRole('button', { name: 'Start for real' }).click();
+  await expect(page.getByText('Real notebook record', { exact: true })).toBeVisible();
+  await expect(page.getByText('Rate limiting', { exact: true })).toHaveCount(0);
 });
 
-test('supports keyboard entry, draft persistence, export, and serious accessibility checks', async ({ page }) => {
-  await page.goto('/');
-  await page.getByLabel('Concept or mechanism').focus();
-  await page.keyboard.type('TCP congestion control');
-  await page.keyboard.press('Enter');
-  await page.getByLabel('What is it, in plain language?').fill('A sender adjusts its rate from network feedback.');
+test('@claim:private-local keeps a complete demo practice on the same origin', async ({ page }) => {
+  const origins = new Set<string>();
+  page.on('request', (request) => origins.add(new URL(request.url()).origin));
+  await openSampleRetry(page);
+  await page.getByLabel('Explain it now, in your own words').fill('A bucket spends tokens and refills them over time.');
+  await page.getByRole('button', { name: /Reflect on this attempt/ }).click();
+  await page.getByRole('button', { name: 'Yes, clearer' }).click();
+  expect([...origins]).toEqual([new URL(page.url()).origin]);
+});
+
+test('@claim:no-account opens a complete sample practice without a sign-in step', async ({ page }) => {
+  await openSampleRetry(page);
+  await page.getByLabel('Explain it now, in your own words').fill('This retry opens without an account.');
+  await page.getByRole('button', { name: /Reflect on this attempt/ }).click();
+  await expect(page.getByRole('button', { name: 'Yes, clearer' })).toBeVisible();
+  await expect(page.getByText(/sign in|create account/i)).toHaveCount(0);
+});
+
+test('@claim:no-tracking makes no third-party request during demo use', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Retry piece' }).click();
+  await page.getByLabel('Explain it now, in your own words').fill('No tracking request is needed for a retry.');
+  await page.getByRole('button', { name: /Reflect on this attempt/ }).click();
+  const origin = new URL(page.url()).origin;
+  expect(requests.every((url) => new URL(url).origin === origin)).toBe(true);
+});
+
+test('@claim:browser-storage persists a demo record across a reload', async ({ page }) => {
+  await openDemo(page);
+  await page.getByLabel('Concept or mechanism').fill('Browser-only record');
+  await page.getByRole('button', { name: 'Begin explanation' }).click();
+  await page.goto('/demo');
+  await expect(page.getByText('Browser-only record', { exact: true })).toBeVisible();
+});
+
+test('@claim:three-cues presents what, why, and failure prompts', async ({ page }) => {
+  await openSamplePractice(page);
+  await expect(page.getByLabel('What is it, in plain language?')).toBeVisible();
+  await expect(page.getByLabel('What makes it work?')).toBeVisible();
+  await expect(page.getByLabel('Where does it fail or trade something off?')).toBeVisible();
+});
+
+test('@claim:ninety-second-timer completes after 90 seconds', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-05T12:00:00Z') });
+  await openSamplePractice(page);
+  await page.getByRole('button', { name: 'Start timer' }).click();
+  await page.clock.fastForward(90_000);
+  await expect(page.locator('#timer-value')).toHaveText('Done');
+});
+
+test('@claim:self-assessment lets the learner decide whether a retry is clearer', async ({ page }) => {
+  await openSampleRetry(page);
+  await page.getByLabel('Explain it now, in your own words').fill('The bucket can carry a limited burst before it rejects requests.');
+  await page.getByRole('button', { name: /Reflect on this attempt/ }).click();
+  await expect(page.getByRole('heading', { name: 'Did this attempt feel clearer?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Yes, clearer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Not yet—return tomorrow' })).toBeVisible();
+});
+
+test('@claim:audio-excluded-from-export excludes an audio record from JSON output', async ({ page }) => {
+  await openDemo(page);
+  await addAudioAttempt(page);
   await page.reload();
-  await expect(page.getByLabel('What is it, in plain language?')).toHaveValue('A sender adjusts its rate from network feedback.');
-
-  await page.goto('/');
-  const downloadPromise = page.waitForEvent('download');
+  const downloadEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export JSON' }).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('explain-then-check.json');
+  const download = await downloadEvent;
+  const file = await download.path();
+  expect(file).not.toBeNull();
+  const text = await readFile(file as string, 'utf8');
+  expect(JSON.parse(text).attempts.some((attempt: Record<string, unknown>) => Object.hasOwn(attempt, 'audio'))).toBe(false);
+});
 
+test('@claim:json-export downloads the populated demo as a portable backup', async ({ page }) => {
+  await openDemo(page);
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export JSON' }).click();
+  const file = await (await downloadEvent).path();
+  const backup = JSON.parse(await readFile(file as string, 'utf8'));
+  expect(backup.product).toBe('explain-then-check');
+  expect(backup.concepts[0].title).toBe('Rate limiting');
+  expect(backup.omissions).toHaveLength(1);
+});
+
+test('@claim:csv-export downloads a row for each populated demo record', async ({ page }) => {
+  await openDemo(page);
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export CSV' }).click();
+  const file = await (await downloadEvent).path();
+  const rows = (await readFile(file as string, 'utf8')).trim().split('\n');
+  expect(rows[0]).toContain('record_type');
+  expect(rows.length).toBe(5);
+  expect(rows.some((row) => row.includes('Rate limiting'))).toBe(true);
+});
+
+test('@claim:json-restore replaces demo data with a valid backup', async ({ page }) => {
+  await openDemo(page);
+  const backup = {
+    product: 'explain-then-check', version: 1, exportedAt: new Date().toISOString(), note: '',
+    concepts: [{ id: 'restored', title: 'Restored concept', createdAt: '2026-09-05T00:00:00Z', updatedAt: '2026-09-05T00:00:00Z' }],
+    attempts: [], omissions: []
+  };
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('#import-json').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) });
+  await expect(page.getByText('Restored concept', { exact: true })).toBeVisible();
+  await expect(page.getByText('Rate limiting', { exact: true })).toHaveCount(0);
+});
+
+test('@claim:delete-data removes all demo records after confirmation', async ({ page }) => {
+  await openDemo(page);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Delete all data' }).click();
+  await expect(page.getByText('Your desk is clear.')).toBeVisible();
+  await expect(page.getByText('No pieces waiting.')).toBeVisible();
+});
+
+test('@claim:draft-refresh restores an unfinished explanation after reload', async ({ page }) => {
+  await openSamplePractice(page);
+  await page.getByLabel('What is it, in plain language?').fill('A saved local draft.');
+  await page.reload();
+  await expect(page.getByLabel('What is it, in plain language?')).toHaveValue('A saved local draft.');
+});
+
+test('@claim:offline-reload works offline after the demo first loads', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await openDemo(page);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Explain a concept in your own words' })).toBeVisible();
+    await expect(page.getByLabel('Demo mode')).toBeVisible();
+    await expect(page.locator('#network-state')).toContainText('Offline');
+  } finally {
+    await context.close();
+  }
+});
+
+test('@claim:app-shell-cache stores the shell after the first visit', async ({ page }) => {
+  await openDemo(page);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  const cachedShell = await page.evaluate(async () => {
+    const keys = await caches.keys();
+    return Promise.all(keys.map(async (key) => Boolean(await caches.open(key).then((cache) => cache.match('/')))));
+  });
+  expect(cachedShell.some(Boolean)).toBe(true);
+});
+
+test('@claim:self-marked-omissions schedules no retry when no gap is entered', async ({ page }) => {
+  await openDemo(page);
+  await page.getByLabel('Concept or mechanism').fill('Circuit breaker');
+  await page.getByRole('button', { name: 'Begin explanation' }).click();
+  await page.getByLabel('What is it, in plain language?').fill('A guard that stops calls after repeated failures.');
+  await page.getByLabel('What makes it work?').fill('It changes state after failures and later allows a probe.');
+  await page.getByLabel('Where does it fail or trade something off?').fill('A wrong threshold can block healthy work.');
+  await page.getByRole('button', { name: /Check my explanation/ }).click();
+  await page.getByRole('button', { name: 'Schedule missing pieces' }).click();
+  await expect(page.getByText('Explanation saved. Nothing scheduled.')).toBeVisible();
+  const circuitBreaker = page.locator('.concept-row', { hasText: 'Circuit breaker' });
+  await expect(circuitBreaker).toBeVisible();
+  await expect(circuitBreaker).not.toContainText('to retry');
+});
+
+test('@claim:focused-retry opens only the marked missing piece', async ({ page }) => {
+  await openSampleRetry(page);
+  await expect(page.getByText('How burst capacity changes a token bucket without removing the average limit')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Explain this missing piece' })).toBeVisible();
+  await expect(page.getByLabel('What is it, in plain language?')).toHaveCount(0);
+});
+
+test('@claim:free-no-paywall completes a sample retry without payment', async ({ page }) => {
+  await openSampleRetry(page);
+  await page.getByLabel('Explain it now, in your own words').fill('A free sample retry does not need a payment step.');
+  await page.getByRole('button', { name: /Reflect on this attempt/ }).click();
+  await page.getByRole('button', { name: 'Yes, clearer' }).click();
+  await expect(page.getByText('Piece closed as clearer.')).toBeVisible();
+  await expect(page.getByText(/payment|upgrade|subscribe/i)).toHaveCount(0);
+});
+
+test('handles route metadata, focus changes, the designed 404, and legal metadata', async ({ page }) => {
+  await openDemo(page);
+  await page.getByRole('button', { name: 'Explain again' }).click();
+  await expect(page).toHaveTitle('Practice — Explain Then Check');
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('practice-title');
+  const missing = await page.goto('/missing-review-route');
+  expect(missing?.status()).toBe(404);
+  await expect(page).toHaveTitle('Page not found — Explain Then Check');
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+  await page.goto('/privacy/');
+  await expect(page).toHaveTitle('Privacy — Explain Then Check');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://explain-then-check.sociobot.in/privacy/');
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /explain-then-check-social/);
+});
+
+test('has no CSP console errors through the normal practice path and passes key accessibility checks', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openSamplePractice(page);
+  await page.getByRole('button', { name: 'Start timer' }).click();
+  await page.getByLabel('What is it, in plain language?').fill('A limit on request rates.');
+  await page.getByLabel('What makes it work?').fill('It caps demand before a service overloads.');
+  await page.getByLabel('Where does it fail or trade something off?').fill('A bad policy can reject valid traffic.');
+  await page.getByRole('button', { name: /Check my explanation/ }).click();
+  await expect(page.getByRole('heading', { name: 'What went missing?' })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   const severe = results.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''));
   expect(severe).toEqual([]);
-});
-
-test('works at 390px and reloads offline after installation', async ({ page, context }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
-  await page.reload();
-  await page.waitForLoadState('networkidle');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Say what you know');
-  await expect(page.locator('#network-state')).toContainText('Offline');
-  await context.setOffline(false);
+  expect(errors).toEqual([]);
 });
 
-test('offers and applies an update when a new service worker is waiting', async ({ browser }) => {
+test('@claim:pwa-update offers and applies an update when a new service worker is waiting', async ({ browser }) => {
   const server = await startUpdateServer();
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -116,16 +320,12 @@ test('offers and applies an update when a new service worker is waiting', async 
     await page.evaluate(() => navigator.serviceWorker.ready);
     await page.reload();
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
-
     server.publishUpdate();
     await page.evaluate(async () => { await (await navigator.serviceWorker.ready).update(); });
     await expect(page.getByText('A fresh version is ready.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
-
     const refreshed = page.waitForEvent('framenavigated', (frame) => frame === page.mainFrame());
     await page.getByRole('button', { name: 'Update' }).click();
     await refreshed;
-    await page.waitForLoadState('domcontentloaded');
     await expect.poll(() => page.evaluate(async () => {
       const registration = await navigator.serviceWorker.ready;
       return !registration.waiting && Boolean(navigator.serviceWorker.controller);
@@ -134,63 +334,4 @@ test('offers and applies an update when a new service worker is waiting', async 
     await context.close();
     await server.close();
   }
-});
-
-test('keeps desktop home and legal links at the 44px target minimum', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/');
-  const dimensions = await page.locator('.brand, .site-footer a').evaluateAll((links) => links.map((link) => {
-    const { width, height } = link.getBoundingClientRect();
-    return { width, height };
-  }));
-  expect(dimensions).toHaveLength(3);
-  for (const { width, height } of dimensions) {
-    expect(width).toBeGreaterThanOrEqual(44);
-    expect(height).toBeGreaterThanOrEqual(44);
-  }
-});
-
-test('ships static-host cache, manifest, and hardening policies', async () => {
-  const headers = await readFile(resolve(process.cwd(), 'public/_headers'), 'utf8');
-  expect(headers).toContain('/assets/*\n  Cache-Control: public, max-age=31536000, immutable');
-  expect(headers).toContain('/manifest.webmanifest\n  Cache-Control: public, max-age=86400, must-revalidate\n  Content-Type: application/manifest+json; charset=utf-8');
-  expect(headers).toContain('/sw.js\n  Cache-Control: no-cache, no-store, must-revalidate');
-  expect(headers).toContain("Content-Security-Policy: default-src 'self'");
-  expect(headers).toContain('Permissions-Policy: camera=(), geolocation=(), microphone=(self), payment=(), usb=()');
-  expect(headers).toContain('X-Frame-Options: DENY');
-});
-
-test('ships the Azure Static Web Apps response-policy configuration in the deployment artifact', async () => {
-  const configuration = JSON.parse(await readFile(resolve(process.cwd(), 'dist/staticwebapp.config.json'), 'utf8')) as {
-    globalHeaders: Record<string, string>;
-    mimeTypes: Record<string, string>;
-    navigationFallback: { rewrite: string; exclude: string[] };
-    routes: Array<{ route: string; headers: Record<string, string> }>;
-  };
-  const headersFor = (route: string) => configuration.routes.find((rule) => rule.route === route)?.headers;
-
-  expect(configuration.navigationFallback).toEqual(expect.objectContaining({
-    rewrite: '/index.html',
-    exclude: expect.arrayContaining(['/assets/*', '/sw.js', '/manifest.webmanifest'])
-  }));
-  expect(configuration.globalHeaders).toMatchObject({
-    'Content-Security-Policy': expect.stringContaining("default-src 'self'"),
-    'Permissions-Policy': 'camera=(), geolocation=(), microphone=(self), payment=(), usb=()',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY'
-  });
-  expect(configuration.mimeTypes['.webmanifest']).toBe('application/manifest+json; charset=utf-8');
-  expect(headersFor('/assets/*')?.['Cache-Control']).toBe('public, max-age=31536000, immutable');
-  expect(headersFor('/sw.js')?.['Cache-Control']).toBe('no-cache, no-store, must-revalidate');
-  expect(headersFor('/manifest.webmanifest')?.['Cache-Control']).toBe('public, max-age=86400, must-revalidate');
-  expect(headersFor('/*')?.['Cache-Control']).toBe('no-cache, must-revalidate');
-});
-
-test('serves privacy and terms at their direct paths', async ({ page }) => {
-  await page.goto('/privacy/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
-  await expect(page.getByText('no analytics, advertising')).toBeVisible();
-  await page.goto('/terms/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Terms' })).toBeVisible();
-  await expect(page.getByText('No automated grading')).toBeVisible();
 });

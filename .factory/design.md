@@ -45,6 +45,8 @@ The phone experience drops the large illustration after the home introduction an
 - `public/art/study-garden.webp`: wide hero scenery generated for this product, with enough negative space for a compact caption and no embedded UI/text. Source PNG and prompt sidecar are retained in `assets/src/`.
 - App icons are hand-authored SVG: an open speech-shaped folio and coral omission dot. They are original project assets.
 
+- public/art/explain-then-check-social.webp: a 1200×630 crop derived locally from the same original hero source for Open Graph and Twitter previews. It contains no required text.
+
 ### Prompt sheet
 
 Subject: a monumental sculptural ear listening toward three hovering blank paper fragments, a tiny coral staircase and one circular cut-out representing an omission.

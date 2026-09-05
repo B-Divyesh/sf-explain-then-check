@@ -1,0 +1,1 @@
+Explain technical concepts in your own words, mark missing pieces, and retry only those parts.

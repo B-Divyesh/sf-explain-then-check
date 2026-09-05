@@ -1,17 +1,4 @@
 {
-  "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": [
-      "/assets/*",
-      "/art/*",
-      "/icons/*",
-      "/sw.js",
-      "/manifest.webmanifest",
-      "/offline.html",
-      "/robots.txt",
-      "/sitemap.xml"
-    ]
-  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -19,10 +6,36 @@
     "Content-Security-Policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'",
     "X-Frame-Options": "DENY"
   },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/404.html",
+      "statusCode": 404
+    }
+  },
   "mimeTypes": {
     ".webmanifest": "application/manifest+json; charset=utf-8"
   },
   "routes": [
+    {
+      "route": "/demo",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/demo/practice/*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/demo/retry/*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/practice/*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/retry/*",
+      "rewrite": "/index.html"
+    },
     {
       "route": "/assets/*",
       "headers": {
@@ -51,6 +64,12 @@
       "route": "/manifest.webmanifest",
       "headers": {
         "Cache-Control": "public, max-age=86400, must-revalidate"
+      }
+    },
+    {
+      "route": "/404.css",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
       }
     },
     {

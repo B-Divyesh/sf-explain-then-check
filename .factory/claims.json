@@ -1,0 +1,142 @@
+[
+  {
+    "id": "demo-isolation",
+    "claim": "The demo loads sample data, can be reset, and never changes real records.",
+    "where": "Demo banner, README",
+    "test": "npm run test:e2e -- --grep @claim:demo-isolation",
+    "sandbox": "Create a real record, enter /demo, reset it, then return to the unchanged real notebook."
+  },
+  {
+    "id": "private-local",
+    "claim": "A complete practice stays on this product origin.",
+    "where": "First-screen private fact, Privacy",
+    "test": "npm run test:e2e -- --grep @claim:private-local",
+    "sandbox": "Complete the demo retry and record every browser request."
+  },
+  {
+    "id": "no-account",
+    "claim": "You can practice without an account.",
+    "where": "Privacy, README",
+    "test": "npm run test:e2e -- --grep @claim:no-account",
+    "sandbox": "Open /demo and complete a retry without an identity or sign-in step."
+  },
+  {
+    "id": "no-tracking",
+    "claim": "Practice makes no third-party tracking request.",
+    "where": "Privacy",
+    "test": "npm run test:e2e -- --grep @claim:no-tracking",
+    "sandbox": "Capture requests through a demo retry and assert every one is same-origin."
+  },
+  {
+    "id": "browser-storage",
+    "claim": "Practice records are stored in browser storage.",
+    "where": "Privacy, README",
+    "test": "npm run test:e2e -- --grep @claim:browser-storage",
+    "sandbox": "Add a demo concept, reload /demo, and observe the saved concept."
+  },
+  {
+    "id": "three-cues",
+    "claim": "Each practice asks what it is, why it works, and where it fails or trades off.",
+    "where": "How it works, practice form, README",
+    "test": "npm run test:e2e -- --grep @claim:three-cues",
+    "sandbox": "Open the sample practice and observe all three labelled prompts."
+  },
+  {
+    "id": "ninety-second-timer",
+    "claim": "The optional timer runs for 90 seconds.",
+    "where": "Practice form",
+    "test": "npm run test:e2e -- --grep @claim:ninety-second-timer",
+    "sandbox": "Run the sample timer with a browser clock advanced exactly 90 seconds."
+  },
+  {
+    "id": "self-assessment",
+    "claim": "You decide whether a retry feels clearer; the app does not issue a correctness grade.",
+    "where": "What this tool does not do, retry reflection, Terms",
+    "test": "npm run test:e2e -- --grep @claim:self-assessment",
+    "sandbox": "Complete the sample retry and observe the two learner-led reflection choices."
+  },
+  {
+    "id": "audio-excluded-from-export",
+    "claim": "Audio stays in IndexedDB and is excluded from text exports.",
+    "where": "Local records, Privacy, README",
+    "test": "npm run test:e2e -- --grep @claim:audio-excluded-from-export",
+    "sandbox": "Store an audio-bearing demo attempt in IndexedDB and inspect the JSON download."
+  },
+  {
+    "id": "json-export",
+    "claim": "You can export practice records as JSON.",
+    "where": "Local records, README",
+    "test": "npm run test:e2e -- --grep @claim:json-export",
+    "sandbox": "Download the populated demo backup and parse its concepts and omissions."
+  },
+  {
+    "id": "csv-export",
+    "claim": "You can export practice records as CSV.",
+    "where": "Local records, README",
+    "test": "npm run test:e2e -- --grep @claim:csv-export",
+    "sandbox": "Download the populated demo CSV and verify its header and every exported row."
+  },
+  {
+    "id": "json-restore",
+    "claim": "You can restore a valid JSON backup.",
+    "where": "Local records, Privacy, README",
+    "test": "npm run test:e2e -- --grep @claim:json-restore",
+    "sandbox": "Import a valid fixture into /demo and observe that it replaces the sample."
+  },
+  {
+    "id": "delete-data",
+    "claim": "You can delete all local practice data.",
+    "where": "Local records, Privacy, README",
+    "test": "npm run test:e2e -- --grep @claim:delete-data",
+    "sandbox": "Confirm Delete all data in /demo and observe empty records and retry states."
+  },
+  {
+    "id": "draft-refresh",
+    "claim": "An unfinished written explanation survives a refresh.",
+    "where": "README",
+    "test": "npm run test:e2e -- --grep @claim:draft-refresh",
+    "sandbox": "Write in the sample form, reload its direct route, and verify the field value."
+  },
+  {
+    "id": "offline-reload",
+    "claim": "The demo works offline after its first visit.",
+    "where": "First-screen offline fact, README",
+    "test": "npm run test:e2e -- --grep @claim:offline-reload",
+    "sandbox": "Use a fresh browser context, install the worker from /demo, switch offline, and reload."
+  },
+  {
+    "id": "app-shell-cache",
+    "claim": "The app shell is cached after the first visit.",
+    "where": "README",
+    "test": "npm run test:e2e -- --grep @claim:app-shell-cache",
+    "sandbox": "After worker control, inspect the browser Cache API for the cached shell."
+  },
+  {
+    "id": "self-marked-omissions",
+    "claim": "Only pieces you mark missing are scheduled for retry.",
+    "where": "How it works, retry section, README",
+    "test": "npm run test:e2e -- --grep @claim:self-marked-omissions",
+    "sandbox": "Complete a demo explanation with no entered omission and verify it gets no retry."
+  },
+  {
+    "id": "focused-retry",
+    "claim": "A retry asks for the one marked piece, not the whole topic.",
+    "where": "How it works, retry screen, README",
+    "test": "npm run test:e2e -- --grep @claim:focused-retry",
+    "sandbox": "Open the seeded retry and verify its prompt names only the marked omission."
+  },
+  {
+    "id": "free-no-paywall",
+    "claim": "You can complete the sample without payment.",
+    "where": "First-screen price fact, Terms",
+    "test": "npm run test:e2e -- --grep @claim:free-no-paywall",
+    "sandbox": "Complete the sample retry and assert no payment, upgrade, or subscription step appears."
+  },
+  {
+    "id": "pwa-update",
+    "claim": "When a newer app version is waiting, you can apply it from the app.",
+    "where": "PWA behavior",
+    "test": "npm run test:e2e -- --grep @claim:pwa-update",
+    "sandbox": "Serve a changed worker, observe the update action, apply it, and verify activation."
+  }
+]

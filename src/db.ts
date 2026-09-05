@@ -1,9 +1,29 @@
 import type { Attempt, Concept, ExportBundle, Omission } from './types';
 
-const DB_NAME = 'explain-then-check';
+const REAL_DB_NAME = 'explain-then-check';
+const DEMO_DB_NAME = 'demo:explain-then-check';
 const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | undefined;
+let databaseName = REAL_DB_NAME;
+
+/**
+ * Demo records live in a completely separate IndexedDB database. Switching
+ * modes closes the current connection so a demo can never read or write the
+ * learner's notebook by accident.
+ */
+export function setDataNamespace(demo: boolean): void {
+  const nextName = demo ? DEMO_DB_NAME : REAL_DB_NAME;
+  if (nextName === databaseName) return;
+  const previous = dbPromise;
+  databaseName = nextName;
+  dbPromise = undefined;
+  void previous?.then((database) => database.close()).catch(() => undefined);
+}
+
+export function currentDatabaseName(): string {
+  return databaseName;
+}
 
 function request<T>(value: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -22,8 +42,9 @@ function transactionDone(transaction: IDBTransaction): Promise<void> {
 
 export function openDatabase(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
+  const name = databaseName;
   dbPromise = new Promise((resolve, reject) => {
-    const opening = indexedDB.open(DB_NAME, DB_VERSION);
+    const opening = indexedDB.open(name, DB_VERSION);
     opening.onupgradeneeded = () => {
       const db = opening.result;
       const concepts = db.createObjectStore('concepts', { keyPath: 'id' });
